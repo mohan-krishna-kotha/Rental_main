@@ -803,6 +803,16 @@ class FirestoreService {
     }
   }
 
+  Future<void> updateDisplayName(String uid, String newName) async {
+     try {
+       await _firestore.collection('users').doc(uid).update({
+         'displayName': newName,
+       });
+     } catch (e) {
+       throw 'Failed to update display name in Firestore: $e';
+     }
+  }
+
   // Helper method to check if a user exists in Firestore
   Future<bool> userExistsInFirestore(String uid) async {
     try {

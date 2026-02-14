@@ -17,59 +17,42 @@ class ChatListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final chatsAsync = ref.watch(userChatsProvider);
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Messages'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Inbox'),
-              Tab(text: 'Sent'),
-            ],
-          ),
-        ),
-        body: chatsAsync.when(
-          data: (chats) {
-            final currentUser = FirebaseAuth.instance.currentUser;
-            if (currentUser == null)
-              return const Center(child: Text('Please log in'));
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Messages'),
+      ),
+      body: chatsAsync.when(
+        data: (chats) {
+          final currentUser = FirebaseAuth.instance.currentUser;
+          if (currentUser == null) {
+            return const Center(child: Text('Please log in'));
+          }
 
-            // Filter chats
-            final inboxChats = chats
-                .where((c) => c.ownerId == currentUser.uid)
-                .toList();
-            final sentChats = chats
-                .where((c) => c.renterId == currentUser.uid)
-                .toList();
+          if (chats.isEmpty) {
+            return const Center(child: Text('No messages yet'));
+          }
 
-            return TabBarView(
-              children: [
-                _buildChatList(inboxChats, 'No messages received'),
-                _buildChatList(sentChats, 'No requests sent'),
-              ],
-            );
-          },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, stack) => Center(child: Text('Error: $err')),
-        ),
+          // Sort chats by last message time (descending)
+          final sortedChats = List<ChatModel>.from(chats)
+            ..sort((a, b) => b.lastMessageAt.compareTo(a.lastMessageAt));
+
+          return ListView.separated(
+            itemCount: sortedChats.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final chat = sortedChats[index];
+              return _ChatListItem(chat: chat);
+            },
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('Error: $err')),
       ),
     );
   }
 
-  Widget _buildChatList(List<ChatModel> chats, String emptyMessage) {
-    if (chats.isEmpty) {
-      return Center(child: Text(emptyMessage));
-    }
-    return ListView.separated(
-      itemCount: chats.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        final chat = chats[index];
-        return _ChatListItem(chat: chat);
-      },
-    );
-  }
+
+
 }
 
 class _ChatListItem extends ConsumerWidget {
@@ -155,11 +138,18 @@ class _ChatListItem extends ConsumerWidget {
         '$name ($itemName)',
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
-      subtitle: Text(
-        chat.lastMessage,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: Colors.grey),
+      subtitle: Builder(
+        builder: (context) {
+          final currentUser = FirebaseAuth.instance.currentUser;
+          final isMe = currentUser?.uid == chat.lastMessageSenderId;
+          final prefix = isMe ? 'You: ' : '';
+          return Text(
+            '$prefix${chat.lastMessage}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.grey),
+          );
+        }
       ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,

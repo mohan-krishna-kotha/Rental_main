@@ -139,6 +139,7 @@ class ChatService {
 
     final updates = <String, dynamic>{
       'lastMessage': text,
+      'lastMessageSenderId': currentUserId,
       'lastMessageAt': FieldValue.serverTimestamp(),
     };
 

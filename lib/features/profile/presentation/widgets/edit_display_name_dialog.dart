@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/providers/auth_provider.dart';
+import '../../../../core/providers/items_provider.dart';
 
 class EditDisplayNameDialog extends ConsumerStatefulWidget {
   const EditDisplayNameDialog({super.key, required this.currentName});
@@ -40,7 +41,12 @@ class _EditDisplayNameDialogState extends ConsumerState<EditDisplayNameDialog> {
     setState(() => _isLoading = true);
 
     try {
+      final currentUser = ref.read(currentUserProvider);
+      if (currentUser == null) throw 'No user logged in';
+
       await ref.read(authServiceProvider).updateDisplayName(newName);
+      await ref.read(firestoreServiceProvider).updateDisplayName(currentUser.uid, newName);
+
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
